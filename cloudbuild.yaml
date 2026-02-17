@@ -20,7 +20,7 @@ steps:
   - compute
   - ssh
   - app-server
-  - --zone=us-central1
+  - --zone=us-central1-a
   - --internal-ip
   - --command
   - |
