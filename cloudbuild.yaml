@@ -4,7 +4,7 @@ steps:
     [
       'build',
       '-t',
-      'asia-south1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest',
+      'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest',
       '.'
     ]
 
@@ -12,7 +12,7 @@ steps:
   args:
     [
       'push',
-      'asia-south1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest'
+      'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest'
     ]
 
 - name: 'gcr.io/cloud-builders/gcloud'
@@ -20,14 +20,14 @@ steps:
   - compute
   - ssh
   - app-server
-  - --zone=asia-south1-a
+  - --zone=us-central1
   - --internal-ip
   - --command
   - |
-    docker pull asia-south1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest &&
+    docker pull us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest &&
     docker stop app || true &&
     docker rm app || true &&
-    docker run -d -p 3000:3000 --name app asia-south1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest
+    docker run -d -p 3000:3000 --name app us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest
 
 options:
   logging: CLOUD_LOGGING_ONLY
