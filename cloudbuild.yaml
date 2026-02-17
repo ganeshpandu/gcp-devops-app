@@ -28,3 +28,7 @@ steps:
     docker stop app || true &&
     docker rm app || true &&
     docker run -d -p 3000:3000 --name app asia-south1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
