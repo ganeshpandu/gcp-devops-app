@@ -1,10 +1,11 @@
 steps:
+
 - name: 'gcr.io/cloud-builders/docker'
   args:
     [
       'build',
       '-t',
-      'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest',
+      'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:$SHORT_SHA',
       '.'
     ]
 
@@ -12,23 +13,20 @@ steps:
   args:
     [
       'push',
-      'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest'
+      'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:$SHORT_SHA'
     ]
 
-- name: 'gcr.io/cloud-builders/gcloud'
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
   args:
-  - compute
-  - ssh
-  - app-server
-  - --zone=us-central1-a
-  - --internal-ip
-  - --command
-  - |
-    docker pull us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest &&
-    docker stop app || true &&
-    docker rm app || true &&
-    docker run -d -p 3000:3000 --name app us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:latest
+  - run
+  - deploy
+  - app-service
+  - --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:$SHORT_SHA
+  - --region=us-central1
+  - --platform=managed
+  - --allow-unauthenticated
+  - --port=8080
 
-options:
-  logging: CLOUD_LOGGING_ONLY
-
+images:
+- 'us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/app:$SHORT_SHA'
