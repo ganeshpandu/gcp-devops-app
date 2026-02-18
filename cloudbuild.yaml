@@ -8,13 +8,13 @@ steps:
   args:
   - build
   - -t
-  - us-central1-docker.pkg.dev/$PROJECT_ID/netflix-repo/backend:$SHORT_SHA
+  - us-central1-docker.pkg.dev/$PROJECT_ID/gcp-devops-app/backend:$SHORT_SHA
   - ./backend
 
 - name: gcr.io/cloud-builders/docker
   args:
   - push
-  - us-central1-docker.pkg.dev/$PROJECT_ID/netflix-repo/backend:$SHORT_SHA
+  - us-central1-docker.pkg.dev/$PROJECT_ID/gcp-devops-app/backend:$SHORT_SHA
 
 - name: gcr.io/google.com/cloudsdktool/cloud-sdk
   entrypoint: gcloud
@@ -22,7 +22,7 @@ steps:
   - run
   - deploy
   - netflix-backend
-  - --image=us-central1-docker.pkg.dev/$PROJECT_ID/netflix-repo/backend:$SHORT_SHA
+  - --image=us-central1-docker.pkg.dev/$PROJECT_ID/gcp-devops-app/backend:$SHORT_SHA
   - --region=us-central1
   - --platform=managed
   - --allow-unauthenticated
@@ -35,7 +35,7 @@ steps:
   args:
   - build
   - -t
-  - us-central1-docker.pkg.dev/$PROJECT_ID/netflix-repo/frontend:$SHORT_SHA
+  - us-central1-docker.pkg.dev/$PROJECT_ID/gcp-devops-app/frontend:$SHORT_SHA
   - --build-arg
   - REACT_APP_API=https://netflix-backend-xxxxx.a.run.app
   - ./frontend
@@ -43,7 +43,7 @@ steps:
 - name: gcr.io/cloud-builders/docker
   args:
   - push
-  - us-central1-docker.pkg.dev/$PROJECT_ID/netflix-repo/frontend:$SHORT_SHA
+  - us-central1-docker.pkg.dev/$PROJECT_ID/gcp-devops-app/frontend:$SHORT_SHA
 
 - name: gcr.io/google.com/cloudsdktool/cloud-sdk
   entrypoint: gcloud
@@ -51,7 +51,7 @@ steps:
   - run
   - deploy
   - netflix-frontend
-  - --image=us-central1-docker.pkg.dev/$PROJECT_ID/netflix-repo/frontend:$SHORT_SHA
+  - --image=us-central1-docker.pkg.dev/$PROJECT_ID/gcp-devops-app/frontend:$SHORT_SHA
   - --region=us-central1
   - --platform=managed
   - --allow-unauthenticated
