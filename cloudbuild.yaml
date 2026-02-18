@@ -26,6 +26,7 @@ steps:
   - --region=us-central1
   - --platform=managed
   - --allow-unauthenticated
+  - --service-account=svc-devops@project-4ef36a3c-319a-4cbc-93a.iam.gserviceaccount.com
   - --set-secrets=DB_PASSWORD=db-password:latest
   - --set-env-vars=DB_HOST=10.184.192.3,DB_USER=netflixuser,DB_NAME=netflixdb
   - --vpc-connector=netflix-connector
