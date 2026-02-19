@@ -20,9 +20,10 @@ steps:
       CHANGES=$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^backend/')
       if [ -n "$CHANGES" ]; then
         echo "Changes detected in backend directory."
+        exit 0
       else
         echo "No changes in backend directory."
-        exit 1  # Skip the backend build if no changes
+        exit 1
       fi
   waitFor: ['-']
 
@@ -104,9 +105,10 @@ steps:
       CHANGES=$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^frontend/')
       if [ -n "$CHANGES" ]; then
         echo "Changes detected in frontend directory."
+        exit 0
       else
         echo "No changes in frontend directory."
-        exit 1  # Skip the frontend build if no changes
+        exit 1
       fi
   waitFor: ['-']
 
