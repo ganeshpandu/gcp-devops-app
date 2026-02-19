@@ -22,21 +22,14 @@ steps:
         echo "Changes detected in backend directory."
       else
         echo "No changes in backend directory."
-        exit 1  # Skip the backend build if no changes
+        exit 1
       fi
-  waitFor: ['-']
 
-# Build Backend only if there are changes in the backend directory
+# Build Backend only if there are changes
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Build Backend'
-  args:
-    - build
-    - -t
-    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
-    - ./backend
-  dir: './backend'
   waitFor: ['Check Backend Changes']
-  entrypoint: 'bash'
+  entrypoint: bash
   args:
     - -c
     - |
@@ -50,11 +43,8 @@ steps:
 # Push Backend image
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Push Backend'
-  args:
-    - push
-    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
   waitFor: ['Build Backend']
-  entrypoint: 'bash'
+  entrypoint: bash
   args:
     - -c
     - |
@@ -68,17 +58,8 @@ steps:
 # Deploy Backend to Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'Deploy Backend'
-  entrypoint: 'gcloud'
-  args:
-    - run
-    - deploy
-    - $_BACKEND_SERVICE
-    - --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
-    - --region=$_REGION
-    - --platform=managed
-    - --allow-unauthenticated
   waitFor: ['Push Backend']
-  entrypoint: 'bash'
+  entrypoint: bash
   args:
     - -c
     - |
@@ -106,28 +87,22 @@ steps:
         echo "Changes detected in frontend directory."
       else
         echo "No changes in frontend directory."
-        exit 1  # Skip the frontend build if no changes
+        exit 1
       fi
-  waitFor: ['-']
 
-# Build Frontend only if there are changes in the frontend directory
+# Build Frontend only if there are changes
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Build Frontend'
-  args:
-    - build
-    - --build-arg REACT_APP_API=$_BACKEND_URL
-    - -t
-    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
-    - ./frontend
-  dir: './frontend'
   waitFor: ['Check Frontend Changes']
-  entrypoint: 'bash'
+  entrypoint: bash
   args:
     - -c
     - |
       CHANGES=$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^frontend/')
       if [ -n "$CHANGES" ]; then
-        docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA ./frontend
+        docker build \
+          --build-arg REACT_APP_API=$_BACKEND_URL \
+          -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA ./frontend
       else
         echo "No changes in the frontend. Skipping frontend build."
       fi
@@ -135,11 +110,8 @@ steps:
 # Push Frontend image
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Push Frontend'
-  args:
-    - push
-    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
   waitFor: ['Build Frontend']
-  entrypoint: 'bash'
+  entrypoint: bash
   args:
     - -c
     - |
@@ -153,17 +125,8 @@ steps:
 # Deploy Frontend to Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'Deploy Frontend'
-  entrypoint: 'gcloud'
-  args:
-    - run
-    - deploy
-    - $_FRONTEND_SERVICE
-    - --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
-    - --region=$_REGION
-    - --platform=managed
-    - --allow-unauthenticated
   waitFor: ['Push Frontend']
-  entrypoint: 'bash'
+  entrypoint: bash
   args:
     - -c
     - |
