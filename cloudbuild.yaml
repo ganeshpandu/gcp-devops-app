@@ -6,6 +6,7 @@ substitutions:
   _BACKEND_SERVICE: netflix-backend
   _FRONTEND_SERVICE: netflix-frontend
   _BACKEND_URL: ""  # API endpoint for frontend
+  _PROJECT_ID: project-4ef36a3c-319a-4cbc-93a
 
 steps:
 
@@ -41,6 +42,7 @@ steps:
     - --add-cloudsql-instances=project-4ef36a3c-319a-4cbc-93a:us-central1:netflix-postgres   # replace with your Cloud SQL instance connection name
     - --set-env-vars=DB_USER=netflixuser,DB_NAME=netflixdb,DB_CONNECTION_NAME=project-4ef36a3c-319a-4cbc-93a:us-central1:netflix-postgres
     - --set-secrets=DB_PASS=DB_PASS:latest               # pulls password from Secret Manager
+    - --project=$_PROJECT_ID
   waitFor: ['Push Backend']
 
 # Build Frontend
