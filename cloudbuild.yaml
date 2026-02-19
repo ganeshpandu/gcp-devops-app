@@ -26,7 +26,7 @@ steps:
         exit 1
       fi
   waitFor: ['-']
-  
+
 # Build Backend only if there are changes in the backend directory
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Build Backend'
@@ -111,7 +111,7 @@ steps:
         exit 1
       fi
   waitFor: ['-']
-  
+
 # Build Frontend only if there are changes in the frontend directory
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Build Frontend'
@@ -179,3 +179,4 @@ steps:
       else
         echo "No changes in the frontend. Skipping frontend deployment."
       fi
+
