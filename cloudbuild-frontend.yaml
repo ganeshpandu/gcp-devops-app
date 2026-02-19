@@ -4,6 +4,7 @@ options:
 substitutions:
   _REGION: us-central1
   _SERVICE: netflix-frontend
+  _BACKEND_URL: ""  # Custom substitution for backend URL
 
 steps:
 
@@ -17,7 +18,7 @@ steps:
       BACKEND_URL=$(gcloud run services describe netflix-backend \
         --region=us-central1 \
         --format="value(status.url)")
-      echo "REACT_APP_API=$BACKEND_URL" > /workspace/env.txt
+      echo "_BACKEND_URL=$BACKEND_URL" >> /workspace/.env
 
 # Build
 - name: gcr.io/cloud-builders/docker
@@ -25,9 +26,9 @@ steps:
   args:
     - -c
     - |
-      source /workspace/env.txt
+      source /workspace/.env
       docker build \
-        --build-arg REACT_APP_API=$REACT_APP_API \
+        --build-arg REACT_APP_API=$_BACKEND_URL \
         -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA \
         ./frontend
 
