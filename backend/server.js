@@ -5,10 +5,6 @@ const { Pool } = require("pg");
 const app = express();
 app.use(cors());
 
-app.get("/", (req, res) => {
-  res.json({ message: "Backend Running 🚀" });
-});
-
 const pool = new Pool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -16,10 +12,26 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   port: 5432,
   ssl: {
-    rejectUnauthorized: false,
-  },
+    rejectUnauthorized: false
+  }
 });
 
+// Root check
+app.get("/", (req, res) => {
+  res.json({ message: "Backend Running" });
+});
+
+// Health endpoint
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.status(200).json({ status: "DB Connected" });
+  } catch (err) {
+    res.status(500).json({ status: "DB Failed", error: err.message });
+  }
+});
+
+// Movies endpoint
 app.get("/movies", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM movies");

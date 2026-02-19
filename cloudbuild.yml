@@ -1,0 +1,124 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: us-central1
+  _BACKEND_SERVICE: netflix-backend
+  _FRONTEND_SERVICE: netflix-frontend
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/db-password/versions/latest
+      env: DB_PASSWORD
+
+steps:
+
+# 1️⃣ Detect Changes
+- name: 'gcr.io/cloud-builders/git'
+  id: Detect Changes
+  entrypoint: bash
+  args:
+    - -c
+    - |
+      CHANGED=$(git diff --name-only HEAD~1 HEAD || true)
+
+      if echo "$CHANGED" | grep -q "^backend/"; then
+        echo "BACKEND_CHANGED=true" >> /workspace/env_vars
+      fi
+
+      if echo "$CHANGED" | grep -q "^frontend/"; then
+        echo "FRONTEND_CHANGED=true" >> /workspace/env_vars
+      fi
+
+# 2️⃣ Build Backend
+- name: 'gcr.io/cloud-builders/docker'
+  id: Build Backend
+  entrypoint: bash
+  args:
+    - -c
+    - |
+      source /workspace/env_vars || true
+      if [ "$BACKEND_CHANGED" = "true" ]; then
+        docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA ./backend
+        docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
+      fi
+
+# 3️⃣ DB Health Check
+- name: 'postgres:15'
+  id: DB Health Check
+  entrypoint: bash
+  secretEnv: ['DB_PASSWORD']
+  env:
+    - 'DB_HOST=10.184.192.3'
+    - 'DB_USER=netflixuser'
+    - 'DB_NAME=netflixdb'
+  args:
+    - -c
+    - |
+      source /workspace/env_vars || true
+      if [ "$BACKEND_CHANGED" = "true" ]; then
+        PGPASSWORD=$DB_PASSWORD psql \
+          -h $DB_HOST \
+          -U $DB_USER \
+          -d $DB_NAME \
+          -c "SELECT 1;"
+      fi
+
+# 4️⃣ Deploy Backend
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: Deploy Backend
+  entrypoint: bash
+  args:
+    - -c
+    - |
+      source /workspace/env_vars || true
+      if [ "$BACKEND_CHANGED" = "true" ]; then
+        gcloud run deploy $_BACKEND_SERVICE \
+          --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA \
+          --region=$_REGION \
+          --platform=managed \
+          --allow-unauthenticated \
+          --service-account=svc-devops@$PROJECT_ID.iam.gserviceaccount.com \
+          --set-secrets=DB_PASSWORD=db-password:latest \
+          --set-env-vars=DB_HOST=10.184.192.3,DB_USER=netflixuser,DB_NAME=netflixdb \
+          --vpc-connector=netflix-connector
+      fi
+
+# 5️⃣ Backend Health Gate
+- name: 'curlimages/curl'
+  id: Wait Backend Healthy
+  entrypoint: sh
+  args:
+    - -c
+    - |
+      source /workspace/env_vars || true
+      if [ "$BACKEND_CHANGED" = "true" ]; then
+        for i in $(seq 1 20); do
+          STATUS=$(curl -s https://netflix-backend-1079769889292.us-central1.run.app/health || true)
+          echo $STATUS
+          echo $STATUS | grep "DB Connected" && exit 0
+          sleep 10
+        done
+        exit 1
+      fi
+
+# 6️⃣ Frontend Build & Deploy
+- name: 'gcr.io/cloud-builders/docker'
+  id: Build & Deploy Frontend
+  entrypoint: bash
+  args:
+    - -c
+    - |
+      source /workspace/env_vars || true
+      if [ "$FRONTEND_CHANGED" = "true" ] || [ "$BACKEND_CHANGED" = "true" ]; then
+        docker build \
+          --build-arg REACT_APP_API=https://netflix-backend-1079769889292.us-central1.run.app \
+          -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA ./frontend
+        docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+
+        gcloud run deploy $_FRONTEND_SERVICE \
+          --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA \
+          --region=$_REGION \
+          --platform=managed \
+          --allow-unauthenticated
+      fi
