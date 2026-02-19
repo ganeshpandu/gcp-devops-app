@@ -27,17 +27,17 @@ steps:
       git fetch --unshallow || true
 
       if git rev-parse HEAD~1 >/dev/null 2>&1; then
-        CHANGED=$(git diff --name-only HEAD~1 HEAD)
+        CHANGED=$$(git diff --name-only HEAD~1 HEAD)
       else
         echo "First build — deploy everything"
         CHANGED="backend frontend"
       fi
 
-      if echo "$CHANGED" | grep -q "^backend/"; then
+      if echo "$$CHANGED" | grep -q "^backend/"; then
         echo "BACKEND_CHANGED=true" >> /workspace/env_vars
       fi
 
-      if echo "$CHANGED" | grep -q "^frontend/"; then
+      if echo "$$CHANGED" | grep -q "^frontend/"; then
         echo "FRONTEND_CHANGED=true" >> /workspace/env_vars
       fi
 
@@ -48,12 +48,12 @@ steps:
   args:
     - -c
     - |
-      source /workspace/env_vars || true
-      if [ "$BACKEND_CHANGED" = "true" ]; then
+      source /workspace/env_vars 2>/dev/null || true
+      if [ "$$BACKEND_CHANGED" = "true" ]; then
         docker build \
-          -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA \
+          -t us-central1-docker.pkg.dev/$$PROJECT_ID/app-repo/backend:$$SHORT_SHA \
           ./backend
-        docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
+        docker push us-central1-docker.pkg.dev/$$PROJECT_ID/app-repo/backend:$$SHORT_SHA
       fi
 
 # 3️⃣ DB Health Check
@@ -68,13 +68,13 @@ steps:
   args:
     - -c
     - |
-      source /workspace/env_vars || true
-      if [ "$BACKEND_CHANGED" = "true" ]; then
+      source /workspace/env_vars 2>/dev/null || true
+      if [ "$$BACKEND_CHANGED" = "true" ]; then
         echo "Checking DB connectivity..."
-        PGPASSWORD=$DB_PASSWORD psql \
-          -h $DB_HOST \
-          -U $DB_USER \
-          -d $DB_NAME \
+        PGPASSWORD=$$DB_PASSWORD psql \
+          -h $$DB_HOST \
+          -U $$DB_USER \
+          -d $$DB_NAME \
           -c "SELECT 1;"
       fi
 
@@ -82,18 +82,17 @@ steps:
 - name: gcr.io/google.com/cloudsdktool/cloud-sdk
   id: Deploy Backend
   entrypoint: bash
-  secretEnv: ['DB_PASSWORD']
   args:
     - -c
     - |
-      source /workspace/env_vars || true
-      if [ "$BACKEND_CHANGED" = "true" ]; then
+      source /workspace/env_vars 2>/dev/null || true
+      if [ "$$BACKEND_CHANGED" = "true" ]; then
         gcloud run deploy $_BACKEND_SERVICE \
-          --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA \
+          --image=us-central1-docker.pkg.dev/$$PROJECT_ID/app-repo/backend:$$SHORT_SHA \
           --region=$_REGION \
           --platform=managed \
           --allow-unauthenticated \
-          --service-account=svc-devops@$PROJECT_ID.iam.gserviceaccount.com \
+          --service-account=svc-devops@$$PROJECT_ID.iam.gserviceaccount.com \
           --set-secrets=DB_PASSWORD=db-password:latest \
           --set-env-vars=DB_HOST=$_DB_HOST,DB_USER=$_DB_USER,DB_NAME=$_DB_NAME \
           --vpc-connector=$_CONNECTOR
@@ -106,19 +105,19 @@ steps:
   args:
     - -c
     - |
-      source /workspace/env_vars || true
-      if [ "$BACKEND_CHANGED" = "true" ]; then
+      source /workspace/env_vars 2>/dev/null || true
+      if [ "$$BACKEND_CHANGED" = "true" ]; then
 
-        BACKEND_URL=$(gcloud run services describe $_BACKEND_SERVICE \
+        BACKEND_URL=$$(gcloud run services describe $_BACKEND_SERVICE \
           --region=$_REGION \
           --format="value(status.url)")
 
-        echo "Backend URL: $BACKEND_URL"
+        echo "Backend URL: $$BACKEND_URL"
 
-        for i in $(seq 1 20); do
-          STATUS=$(curl -s $BACKEND_URL/health || true)
-          echo "Health response: $STATUS"
-          echo $STATUS | grep "DB Connected" && exit 0
+        for i in $$(seq 1 20); do
+          STATUS=$$(curl -s $$BACKEND_URL/health || true)
+          echo "Health response: $$STATUS"
+          echo "$$STATUS" | grep "DB Connected" && exit 0
           sleep 10
         done
 
@@ -133,19 +132,19 @@ steps:
   args:
     - -c
     - |
-      source /workspace/env_vars || true
-      if [ "$FRONTEND_CHANGED" = "true" ] || [ "$BACKEND_CHANGED" = "true" ]; then
+      source /workspace/env_vars 2>/dev/null || true
+      if [ "$$FRONTEND_CHANGED" = "true" ] || [ "$$BACKEND_CHANGED" = "true" ]; then
 
-        BACKEND_URL=$(gcloud run services describe $_BACKEND_SERVICE \
+        BACKEND_URL=$$(gcloud run services describe $_BACKEND_SERVICE \
           --region=$_REGION \
           --format="value(status.url)")
 
         docker build \
-          --build-arg REACT_APP_API=$BACKEND_URL \
-          -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA \
+          --build-arg REACT_APP_API=$$BACKEND_URL \
+          -t us-central1-docker.pkg.dev/$$PROJECT_ID/app-repo/frontend:$$SHORT_SHA \
           ./frontend
 
-        docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+        docker push us-central1-docker.pkg.dev/$$PROJECT_ID/app-repo/frontend:$$SHORT_SHA
       fi
 
 # 7️⃣ Deploy Frontend
@@ -155,10 +154,10 @@ steps:
   args:
     - -c
     - |
-      source /workspace/env_vars || true
-      if [ "$FRONTEND_CHANGED" = "true" ] || [ "$BACKEND_CHANGED" = "true" ]; then
+      source /workspace/env_vars 2>/dev/null || true
+      if [ "$$FRONTEND_CHANGED" = "true" ] || [ "$$BACKEND_CHANGED" = "true" ]; then
         gcloud run deploy $_FRONTEND_SERVICE \
-          --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA \
+          --image=us-central1-docker.pkg.dev/$$PROJECT_ID/app-repo/frontend:$$SHORT_SHA \
           --region=$_REGION \
           --platform=managed \
           --allow-unauthenticated
