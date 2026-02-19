@@ -34,7 +34,15 @@ steps:
     - ./backend
   dir: './backend'
   waitFor: ['Check Backend Changes']
-  if: '$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep "^backend/")'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      if git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep -q '^backend/'; then
+        docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA ./backend
+      else
+        echo "No changes in the backend. Skipping backend build."
+      fi
 
 # Push Backend image
 - name: 'gcr.io/cloud-builders/docker'
@@ -43,8 +51,15 @@ steps:
     - push
     - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
   waitFor: ['Build Backend']
-  dir: './backend'
-  if: '$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep "^backend/")'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      if git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep -q '^backend/'; then
+        docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
+      else
+        echo "No changes in the backend. Skipping backend push."
+      fi
 
 # Deploy Backend to Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -59,8 +74,19 @@ steps:
     - --platform=managed
     - --allow-unauthenticated
   waitFor: ['Push Backend']
-  dir: './backend'
-  if: '$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep "^backend/")'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      if git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep -q '^backend/'; then
+        gcloud run deploy $_BACKEND_SERVICE \
+          --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA \
+          --region=$_REGION \
+          --platform=managed \
+          --allow-unauthenticated
+      else
+        echo "No changes in the backend. Skipping backend deployment."
+      fi
 
 # Check if there are changes in the frontend directory
 - name: 'gcr.io/cloud-builders/gcloud'
@@ -88,7 +114,15 @@ steps:
     - ./frontend
   dir: './frontend'
   waitFor: ['Check Frontend Changes']
-  if: '$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep "^frontend/")'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      if git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep -q '^frontend/'; then
+        docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA ./frontend
+      else
+        echo "No changes in the frontend. Skipping frontend build."
+      fi
 
 # Push Frontend image
 - name: 'gcr.io/cloud-builders/docker'
@@ -97,8 +131,15 @@ steps:
     - push
     - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
   waitFor: ['Build Frontend']
-  dir: './frontend'
-  if: '$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep "^frontend/")'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      if git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep -q '^frontend/'; then
+        docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+      else
+        echo "No changes in the frontend. Skipping frontend push."
+      fi
 
 # Deploy Frontend to Cloud Run
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -113,5 +154,16 @@ steps:
     - --platform=managed
     - --allow-unauthenticated
   waitFor: ['Push Frontend']
-  dir: './frontend'
-  if: '$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep "^frontend/")'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      if git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep -q '^frontend/'; then
+        gcloud run deploy $_FRONTEND_SERVICE \
+          --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA \
+          --region=$_REGION \
+          --platform=managed \
+          --allow-unauthenticated
+      else
+        echo "No changes in the frontend. Skipping frontend deployment."
+      fi
