@@ -24,10 +24,12 @@ steps:
   args:
     - push
     - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
+  waitFor: ['Build Backend']
 
 # Deploy Backend
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'Deploy Backend'
+  entrypoint: gcloud
   args:
     - run
     - deploy
@@ -36,6 +38,7 @@ steps:
     - --region=$_REGION
     - --platform=managed
     - --allow-unauthenticated
+  waitFor: ['Push Backend']
 
 # Build Frontend
 - name: 'gcr.io/cloud-builders/docker'
@@ -54,10 +57,12 @@ steps:
   args:
     - push
     - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+  waitFor: ['Build Frontend']
 
 # Deploy Frontend
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'Deploy Frontend'
+  entrypoint: gcloud
   args:
     - run
     - deploy
@@ -66,3 +71,4 @@ steps:
     - --region=$_REGION
     - --platform=managed
     - --allow-unauthenticated
+  waitFor: ['Push Frontend']
