@@ -31,20 +31,20 @@ steps:
       git fetch --unshallow || true
 
       if git rev-parse HEAD~1 >/dev/null 2>&1; then
-        CHANGED=$(git diff --name-only HEAD~1 HEAD)
+        CHANGED=$$(git diff --name-only HEAD~1 HEAD)
       else
         echo "First build — deploy everything"
         CHANGED="backend frontend"
       fi
 
       echo "Changed files:"
-      echo "$CHANGED"
+      echo "$$CHANGED"
 
-      if echo "$CHANGED" | grep -q "^backend/"; then
+      if echo "$$CHANGED" | grep -q "^backend/"; then
         echo "BACKEND_CHANGED=true" >> /workspace/env_vars
       fi
 
-      if echo "$CHANGED" | grep -q "^frontend/"; then
+      if echo "$$CHANGED" | grep -q "^frontend/"; then
         echo "FRONTEND_CHANGED=true" >> /workspace/env_vars
       fi
 
