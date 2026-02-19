@@ -1,0 +1,49 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: us-central1
+  _SERVICE: netflix-frontend
+
+steps:
+
+# Get backend URL
+- name: gcr.io/google.com/cloudsdktool/cloud-sdk
+  id: Get Backend URL
+  entrypoint: bash
+  args:
+    - -c
+    - |
+      BACKEND_URL=$(gcloud run services describe netflix-backend \
+        --region=us-central1 \
+        --format="value(status.url)")
+      echo "REACT_APP_API=$BACKEND_URL" > /workspace/env.txt
+
+# Build
+- name: gcr.io/cloud-builders/docker
+  entrypoint: bash
+  args:
+    - -c
+    - |
+      source /workspace/env.txt
+      docker build \
+        --build-arg REACT_APP_API=$REACT_APP_API \
+        -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA \
+        ./frontend
+
+# Push
+- name: gcr.io/cloud-builders/docker
+  args:
+    - push
+    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+
+# Deploy
+- name: gcr.io/google.com/cloudsdktool/cloud-sdk
+  args:
+    - run
+    - deploy
+    - $_SERVICE
+    - --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+    - --region=$_REGION
+    - --platform=managed
+    - --allow-unauthenticated
