@@ -26,7 +26,7 @@ steps:
     - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
   waitFor: ['Build Backend']
 
-# Deploy Backend
+# Deploy Backend (with Cloud SQL + Secret Manager)
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'Deploy Backend'
   entrypoint: gcloud
@@ -38,6 +38,9 @@ steps:
     - --region=$_REGION
     - --platform=managed
     - --allow-unauthenticated
+    - --add-cloudsql-instances=project-4ef36a3c-319a-4cbc-93a:us-central1:netflix-postgres   # replace with your Cloud SQL instance connection name
+    - --set-env-vars=DB_USER=netflixuser,DB_NAME=netflixdb,DB_CONNECTION_NAME=project-4ef36a3c-319a-4cbc-93a:us-central1:netflix-postgres
+    - --set-secrets=DB_PASS=DB_PASS:latest               # pulls password from Secret Manager
   waitFor: ['Push Backend']
 
 # Build Frontend
