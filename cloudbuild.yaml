@@ -9,134 +9,46 @@ substitutions:
 
 steps:
 
-# Check if there are changes in the backend directory
+# Backend pipeline
 - name: 'gcr.io/cloud-builders/gcloud'
-  id: 'Check Backend Changes'
+  id: 'Backend Pipeline'
   entrypoint: bash
   args:
     - -c
     - |
-      echo "Checking for changes in the backend directory..."
-      CHANGES=$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^backend/')
-      if [ -n "$CHANGES" ]; then
-        echo "Changes detected in backend directory."
-      else
-        echo "No changes in backend directory."
-        exit 0
-      fi
-
-# Build Backend only if there are changes
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Build Backend'
-  waitFor: ['Check Backend Changes']
-  entrypoint: bash
-  args:
-    - -c
-    - |
-      CHANGES=$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^backend/')
-      if [ -n "$CHANGES" ]; then
+      echo "Checking backend changes..."
+      if git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^backend/' >/dev/null; then
+        echo "Building backend..."
         docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA ./backend
-      else
-        echo "Skipping backend build."
-      fi
-
-# Push Backend image
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Push Backend'
-  waitFor: ['Build Backend']
-  entrypoint: bash
-  args:
-    - -c
-    - |
-      CHANGES=$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^backend/')
-      if [ -n "$CHANGES" ]; then
         docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
-      else
-        echo "Skipping backend push."
-      fi
-
-# Deploy Backend to Cloud Run
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  id: 'Deploy Backend'
-  waitFor: ['Push Backend']
-  entrypoint: bash
-  args:
-    - -c
-    - |
-      CHANGES=$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^backend/')
-      if [ -n "$CHANGES" ]; then
         gcloud run deploy $_BACKEND_SERVICE \
           --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA \
           --region=$_REGION \
           --platform=managed \
           --allow-unauthenticated
       else
-        echo "Skipping backend deployment."
+        echo "No backend changes. Skipping backend pipeline."
       fi
 
-# Check if there are changes in the frontend directory
+# Frontend pipeline
 - name: 'gcr.io/cloud-builders/gcloud'
-  id: 'Check Frontend Changes'
+  id: 'Frontend Pipeline'
   entrypoint: bash
   args:
     - -c
     - |
-      echo "Checking for changes in the frontend directory..."
-      CHANGES=$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^frontend/')
-      if [ -n "$CHANGES" ]; then
-        echo "Changes detected in frontend directory."
-      else
-        echo "No changes in frontend directory."
-        exit 0
-      fi
-
-# Build Frontend only if there are changes
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Build Frontend'
-  waitFor: ['Check Frontend Changes']
-  entrypoint: bash
-  args:
-    - -c
-    - |
-      CHANGES=$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^frontend/')
-      if [ -n "$CHANGES" ]; then
+      echo "Checking frontend changes..."
+      if git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^frontend/' >/dev/null; then
+        echo "Building frontend..."
         docker build \
           --build-arg REACT_APP_API=$_BACKEND_URL \
           -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA ./frontend
-      else
-        echo "Skipping frontend build."
-      fi
-
-# Push Frontend image
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Push Frontend'
-  waitFor: ['Build Frontend']
-  entrypoint: bash
-  args:
-    - -c
-    - |
-      CHANGES=$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^frontend/')
-      if [ -n "$CHANGES" ]; then
         docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
-      else
-        echo "Skipping frontend push."
-      fi
-
-# Deploy Frontend to Cloud Run
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  id: 'Deploy Frontend'
-  waitFor: ['Push Frontend']
-  entrypoint: bash
-  args:
-    - -c
-    - |
-      CHANGES=$(git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^frontend/')
-      if [ -n "$CHANGES" ]; then
         gcloud run deploy $_FRONTEND_SERVICE \
           --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA \
           --region=$_REGION \
           --platform=managed \
           --allow-unauthenticated
       else
-        echo "Skipping frontend deployment."
+        echo "No frontend changes. Skipping frontend pipeline."
       fi
