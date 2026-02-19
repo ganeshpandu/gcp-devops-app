@@ -177,4 +177,3 @@ steps:
       else
         echo "No changes in the frontend. Skipping frontend deployment."
       fi
-
