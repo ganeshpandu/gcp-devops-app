@@ -5,50 +5,64 @@ substitutions:
   _REGION: us-central1
   _BACKEND_SERVICE: netflix-backend
   _FRONTEND_SERVICE: netflix-frontend
-  _BACKEND_URL: ""  # Custom substitution for backend URL
+  _BACKEND_URL: ""  # API endpoint for frontend
 
 steps:
 
-# Backend pipeline
-- name: 'gcr.io/cloud-builders/gcloud'
-  id: 'Backend Pipeline'
-  entrypoint: bash
+# Build Backend
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build Backend'
   args:
-    - -c
-    - |
-      echo "Checking backend changes..."
-      if git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^backend/' >/dev/null; then
-        echo "Building backend..."
-        docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA ./backend
-        docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
-        gcloud run deploy $_BACKEND_SERVICE \
-          --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA \
-          --region=$_REGION \
-          --platform=managed \
-          --allow-unauthenticated
-      else
-        echo "No backend changes. Skipping backend pipeline."
-      fi
+    - build
+    - -t
+    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
+    - ./backend
 
-# Frontend pipeline
-- name: 'gcr.io/cloud-builders/gcloud'
-  id: 'Frontend Pipeline'
-  entrypoint: bash
+# Push Backend
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push Backend'
   args:
-    - -c
-    - |
-      echo "Checking frontend changes..."
-      if git diff --name-only $COMMIT_SHA^ $COMMIT_SHA | grep '^frontend/' >/dev/null; then
-        echo "Building frontend..."
-        docker build \
-          --build-arg REACT_APP_API=$_BACKEND_URL \
-          -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA ./frontend
-        docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
-        gcloud run deploy $_FRONTEND_SERVICE \
-          --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA \
-          --region=$_REGION \
-          --platform=managed \
-          --allow-unauthenticated
-      else
-        echo "No frontend changes. Skipping frontend pipeline."
-      fi
+    - push
+    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
+
+# Deploy Backend
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'Deploy Backend'
+  args:
+    - run
+    - deploy
+    - $_BACKEND_SERVICE
+    - --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
+    - --region=$_REGION
+    - --platform=managed
+    - --allow-unauthenticated
+
+# Build Frontend
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build Frontend'
+  args:
+    - build
+    - --build-arg
+    - REACT_APP_API=$_BACKEND_URL
+    - -t
+    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+    - ./frontend
+
+# Push Frontend
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push Frontend'
+  args:
+    - push
+    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+
+# Deploy Frontend
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'Deploy Frontend'
+  args:
+    - run
+    - deploy
+    - $_FRONTEND_SERVICE
+    - --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+    - --region=$_REGION
+    - --platform=managed
+    - --allow-unauthenticated
