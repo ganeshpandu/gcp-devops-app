@@ -22,7 +22,7 @@ steps:
         echo "Changes detected in backend directory."
       else
         echo "No changes in backend directory."
-        exit 1
+        exit 0
       fi
 
 # Build Backend only if there are changes
@@ -37,7 +37,7 @@ steps:
       if [ -n "$CHANGES" ]; then
         docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA ./backend
       else
-        echo "No changes in the backend. Skipping backend build."
+        echo "Skipping backend build."
       fi
 
 # Push Backend image
@@ -52,7 +52,7 @@ steps:
       if [ -n "$CHANGES" ]; then
         docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
       else
-        echo "No changes in the backend. Skipping backend push."
+        echo "Skipping backend push."
       fi
 
 # Deploy Backend to Cloud Run
@@ -71,7 +71,7 @@ steps:
           --platform=managed \
           --allow-unauthenticated
       else
-        echo "No changes in the backend. Skipping backend deployment."
+        echo "Skipping backend deployment."
       fi
 
 # Check if there are changes in the frontend directory
@@ -87,7 +87,7 @@ steps:
         echo "Changes detected in frontend directory."
       else
         echo "No changes in frontend directory."
-        exit 1
+        exit 0
       fi
 
 # Build Frontend only if there are changes
@@ -104,7 +104,7 @@ steps:
           --build-arg REACT_APP_API=$_BACKEND_URL \
           -t us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA ./frontend
       else
-        echo "No changes in the frontend. Skipping frontend build."
+        echo "Skipping frontend build."
       fi
 
 # Push Frontend image
@@ -119,7 +119,7 @@ steps:
       if [ -n "$CHANGES" ]; then
         docker push us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
       else
-        echo "No changes in the frontend. Skipping frontend push."
+        echo "Skipping frontend push."
       fi
 
 # Deploy Frontend to Cloud Run
@@ -138,5 +138,5 @@ steps:
           --platform=managed \
           --allow-unauthenticated
       else
-        echo "No changes in the frontend. Skipping frontend deployment."
+        echo "Skipping frontend deployment."
       fi
