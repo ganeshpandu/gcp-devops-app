@@ -18,7 +18,7 @@ const pool = new Pool({
 
 // Root check
 app.get("/", (req, res) => {
-  res.json({ message: "Backend Running..." });
+  res.json({ message: "Backend Running" });
 });
 
 // Health endpoint
