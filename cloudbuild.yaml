@@ -1,0 +1,87 @@
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: us-central1
+  _BACKEND_SERVICE: netflix-backend
+  _FRONTEND_SERVICE: netflix-frontend
+  _BACKEND_URL: ""  # Custom substitution for backend URL
+
+steps:
+
+# Build Backend if changes are in the backend directory
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build Backend'
+  args:
+    - build
+    - -t
+    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
+    - ./backend
+  dir: './backend'
+  waitFor: ['-']
+  when:
+    branch: ['main']
+    paths: ['./backend/**']
+
+# Push Backend image
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push Backend'
+  args:
+    - push
+    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
+  waitFor: ['Build Backend']
+  dir: './backend'
+
+# Deploy Backend to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'Deploy Backend'
+  entrypoint: 'gcloud'
+  args:
+    - run
+    - deploy
+    - $_BACKEND_SERVICE
+    - --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/backend:$SHORT_SHA
+    - --region=$_REGION
+    - --platform=managed
+    - --allow-unauthenticated
+  waitFor: ['Push Backend']
+  dir: './backend'
+
+# Build Frontend if changes are in the frontend directory
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Build Frontend'
+  args:
+    - build
+    - --build-arg REACT_APP_API=$_BACKEND_URL
+    - -t
+    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+    - ./frontend
+  dir: './frontend'
+  waitFor: ['-']
+  when:
+    branch: ['main']
+    paths: ['./frontend/**']
+
+# Push Frontend image
+- name: 'gcr.io/cloud-builders/docker'
+  id: 'Push Frontend'
+  args:
+    - push
+    - us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+  waitFor: ['Build Frontend']
+  dir: './frontend'
+
+# Deploy Frontend to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'Deploy Frontend'
+  entrypoint: 'gcloud'
+  args:
+    - run
+    - deploy
+    - $_FRONTEND_SERVICE
+    - --image=us-central1-docker.pkg.dev/$PROJECT_ID/app-repo/frontend:$SHORT_SHA
+    - --region=$_REGION
+    - --platform=managed
+    - --allow-unauthenticated
+  waitFor: ['Push Frontend']
+  dir: './frontend'
